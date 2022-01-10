@@ -121,54 +121,11 @@ public class SamlDecoder implements Execution {
     return output;
   }
 
-  // public static String toPrettyString(String xml, int indent) {
-  //     try {
-  //         // Turn xml string into a document
-  //         Document document = DocumentBuilderFactory.newInstance()
-  //             .newDocumentBuilder()
-  //             .parse(new InputSource(new ByteArrayInputStream(xml.getBytes("utf-8"))));
-  //
-  //         // Remove whitespaces outside tags
-  //         document.normalize();
-  //         XPath xPath = XPathFactory.newInstance().newXPath();
-  //         NodeList nodeList = (NodeList) xPath.evaluate("//text()[normalize-space()='']",
-  //                                                       document,
-  //                                                       XPathConstants.NODESET);
-  //
-  //         for (int i = 0; i < nodeList.getLength(); ++i) {
-  //             Node node = nodeList.item(i);
-  //             node.getParentNode().removeChild(node);
-  //         }
-  //
-  //         // Setup pretty print options
-  //         TransformerFactory transformerFactory = TransformerFactory.newInstance();
-  //         transformerFactory.setAttribute("indent-number", indent);
-  //         Transformer transformer = transformerFactory.newTransformer();
-  //         transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
-  //         transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
-  //         transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-  //
-  //         // Return pretty print xml string
-  //         StringWriter stringWriter = new StringWriter();
-  //         transformer.transform(new DOMSource(document), new StreamResult(stringWriter));
-  //         return stringWriter.toString();
-  //     } catch (Exception e) {
-  //         throw new RuntimeException(e);
-  //     }
-  // }
-
   protected static String getStackTraceAsString(Throwable t) {
     StringWriter sw = new StringWriter();
     t.printStackTrace(new PrintWriter(sw));
     return sw.toString();
   }
-
-  // static String removePadding(String value) {
-  //   while (value.endsWith("-")) {
-  //     value = value.substring(0, value.length() - 1);
-  //   }
-  //   return value;
-  // }
 
   public ExecutionResult execute(final MessageContext msgCtxt, final ExecutionContext execContext) {
     try {

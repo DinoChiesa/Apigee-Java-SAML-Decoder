@@ -3,9 +3,34 @@
 This directory contains the Java source code and pom.xml file required to
 compile a simple Java callout for Apigee. The callout is very simple: it decodes an encoded SAML Assertion.
 
+## Why do we need this?
+
+The Apigee builtin policy
+[ValidateSAMLAssertion](https://cloud.google.com/apigee/docs/api-platform/reference/policies/saml-assertion-policy#usagenotes-validatesamlassertion)
+will verify the SAML signature based on certs in the TrustStore.
+
+[ExtractVariables](https://cloud.google.com/apigee/docs/api-platform/reference/policies/extract-variables-policy)
+can allow you to extract from that XML document any attributes of interest, like the user attribute,
+into context variables which you can then reference in subsequent policies.
+
+The only obstacle is that `ValidateSAMLAssertion` requires the SAML to be
+presented in an XML form. If you have a base64-encoded, compressed version of a SAML
+assertion, `ValidateSAMLAssertion` will not be able to handle it.
+
+The encoded assertion is produced by a multi-step process like
+this:
+
+1. generate the XML form of the signed SAML assertion
+2. compress the XML text into a bytestream
+3. base64-encode that bytestream into a String
+
+This answer provides a way to reverse steps 3 and 2 of that process, to produce
+an XML version of the assertion that `ValidateSAMLAssertion` can handle.
+
+
 ## LICENSE
 
-This material is copyright 2017-2022 Google LLC.
+This material is Copyright © 2017-2022 Google LLC.
 and is licensed under the Apache 2.0 license. See the [LICENSE](LICENSE) file.
 
 ## Disclaimer
