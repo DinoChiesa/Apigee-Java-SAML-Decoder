@@ -1,0 +1,206 @@
+// Copyright © 2022 Google LLC.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+package com.google.apigee.callouts;
+
+import com.apigee.flow.execution.ExecutionContext;
+import com.apigee.flow.execution.ExecutionResult;
+import com.apigee.flow.execution.spi.Execution;
+import com.apigee.flow.message.Message;
+import com.apigee.flow.message.MessageContext;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.Base64;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.zip.DataFormatException;
+import java.util.zip.Inflater;
+
+public class SamlDecoder implements Execution {
+  private static final String varprefix = "decoder_";
+  private static final String variableReferencePatternString =
+      "(.*?)\\{([^\\{\\} :][^\\{\\} ]*?)\\}(.*?)";
+  private static final Pattern variableReferencePattern =
+      Pattern.compile(variableReferencePatternString);
+
+  private static String varName(String s) {
+    return varprefix + s;
+  }
+
+  private Map properties; // read-only
+
+  public SamlDecoder(Map properties) {
+    this.properties = properties;
+  }
+
+  private String getInput(MessageContext msgCtxt) throws Exception {
+    return getSimpleRequiredProperty("input", msgCtxt);
+  }
+
+  private String getOutput(MessageContext msgCtxt) throws Exception {
+    return getSimpleRequiredProperty("output", msgCtxt);
+  }
+
+  private boolean getInflate(MessageContext msgCtxt) throws Exception {
+    return _getBooleanProperty(msgCtxt, "inflate", true);
+  }
+
+  protected boolean _getBooleanProperty(
+      MessageContext msgCtxt, String propName, boolean defaultValue) throws Exception {
+    String flag = (String) this.properties.get(propName);
+    if (flag != null) flag = flag.trim();
+    if (flag == null || flag.equals("")) {
+      return defaultValue;
+    }
+    flag = resolveVariableReferences(flag, msgCtxt);
+    if (flag == null || flag.equals("")) {
+      return defaultValue;
+    }
+    return flag.equalsIgnoreCase("true");
+  }
+
+  private String getSimpleRequiredProperty(String propName, MessageContext msgCtxt)
+      throws Exception {
+    String value = (String) this.properties.get(propName);
+    if (value == null) {
+      throw new IllegalStateException(propName + " resolves to an empty string.");
+    }
+    value = value.trim();
+    if (value.equals("")) {
+      throw new IllegalStateException(propName + " resolves to an empty string.");
+    }
+    return value;
+  }
+
+  private String resolveVariableReferences(String spec, MessageContext msgCtxt) {
+    Matcher matcher = variableReferencePattern.matcher(spec);
+    StringBuffer sb = new StringBuffer();
+    while (matcher.find()) {
+      matcher.appendReplacement(sb, "");
+      sb.append(matcher.group(1));
+      String ref = matcher.group(2);
+      String[] parts = ref.split(":", 2);
+      Object v = msgCtxt.getVariable(parts[0]);
+      if (v != null) {
+        sb.append((String) v);
+      } else if (parts.length > 1) {
+        sb.append(parts[1]);
+      }
+      sb.append(matcher.group(3));
+    }
+    matcher.appendTail(sb);
+    return sb.toString();
+  }
+
+  public static byte[] decompress(byte[] data) throws IOException, DataFormatException {
+    Inflater inflater = new Inflater(true);
+    inflater.setInput(data);
+    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+    byte[] buffer = new byte[1024];
+    while (!inflater.finished()) {
+      int count = inflater.inflate(buffer);
+      outputStream.write(buffer, 0, count);
+    }
+    outputStream.close();
+    byte[] output = outputStream.toByteArray();
+    return output;
+  }
+
+  // public static String toPrettyString(String xml, int indent) {
+  //     try {
+  //         // Turn xml string into a document
+  //         Document document = DocumentBuilderFactory.newInstance()
+  //             .newDocumentBuilder()
+  //             .parse(new InputSource(new ByteArrayInputStream(xml.getBytes("utf-8"))));
+  //
+  //         // Remove whitespaces outside tags
+  //         document.normalize();
+  //         XPath xPath = XPathFactory.newInstance().newXPath();
+  //         NodeList nodeList = (NodeList) xPath.evaluate("//text()[normalize-space()='']",
+  //                                                       document,
+  //                                                       XPathConstants.NODESET);
+  //
+  //         for (int i = 0; i < nodeList.getLength(); ++i) {
+  //             Node node = nodeList.item(i);
+  //             node.getParentNode().removeChild(node);
+  //         }
+  //
+  //         // Setup pretty print options
+  //         TransformerFactory transformerFactory = TransformerFactory.newInstance();
+  //         transformerFactory.setAttribute("indent-number", indent);
+  //         Transformer transformer = transformerFactory.newTransformer();
+  //         transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+  //         transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+  //         transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+  //
+  //         // Return pretty print xml string
+  //         StringWriter stringWriter = new StringWriter();
+  //         transformer.transform(new DOMSource(document), new StreamResult(stringWriter));
+  //         return stringWriter.toString();
+  //     } catch (Exception e) {
+  //         throw new RuntimeException(e);
+  //     }
+  // }
+
+  protected static String getStackTraceAsString(Throwable t) {
+    StringWriter sw = new StringWriter();
+    t.printStackTrace(new PrintWriter(sw));
+    return sw.toString();
+  }
+
+  // static String removePadding(String value) {
+  //   while (value.endsWith("-")) {
+  //     value = value.substring(0, value.length() - 1);
+  //   }
+  //   return value;
+  // }
+
+  public ExecutionResult execute(final MessageContext msgCtxt, final ExecutionContext execContext) {
+    try {
+      String inputVariableName = getInput(msgCtxt);
+      String outputVariableName = getOutput(msgCtxt);
+      Object input = msgCtxt.getVariable(inputVariableName);
+      if (input == null) {
+        throw new IllegalStateException("input is missing.");
+      }
+
+      String encodedString =
+          (input instanceof Message) ? ((Message) input).getContent() : (String) input;
+
+      // base64-Decode the String into bytes
+      byte[] decoded = Base64.getDecoder().decode(encodedString.trim());
+      // Decompress the bytes
+      byte[] decompressed = (getInflate(msgCtxt)) ? decompress(decoded) : decoded;
+
+      // Decode the bytes into a String
+      String samlString = new String(decompressed, 0, decompressed.length, "UTF-8");
+      Object output = (String) msgCtxt.getVariable(outputVariableName);
+      if (output == null || !(output instanceof Message)) {
+        msgCtxt.setVariable(outputVariableName, samlString);
+      } else {
+        Message message = (Message) output;
+        message.setContent(samlString);
+      }
+      return ExecutionResult.SUCCESS;
+    } catch (java.lang.Exception exc1) {
+      msgCtxt.setVariable(varName("error"), exc1.getMessage());
+      msgCtxt.setVariable(varName("stacktrace"), getStackTraceAsString(exc1));
+      return ExecutionResult.ABORT;
+    }
+  }
+}
