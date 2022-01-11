@@ -139,8 +139,9 @@ public class SamlDecoder implements Execution {
       String encodedString =
           (input instanceof Message) ? ((Message) input).getContent() : (String) input;
 
+      encodedString = encodedString.trim().replaceAll("\\r\\n|\\r|\\n", "");
       // base64-Decode the String into bytes
-      byte[] decoded = Base64.getDecoder().decode(encodedString.trim());
+      byte[] decoded = Base64.getDecoder().decode(encodedString);
       // Decompress the bytes
       byte[] decompressed = (getInflate(msgCtxt)) ? decompress(decoded) : decoded;
 

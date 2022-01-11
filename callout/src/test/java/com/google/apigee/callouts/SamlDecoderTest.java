@@ -288,10 +288,10 @@ public class SamlDecoderTest {
   }
 
 
-  @Test
-  public void sample1() throws Exception {
+  @Test(dataProvider = "uncompressedCases")
+  public void uncompressedCases(String filename) throws Exception {
     msgCtxt.setVariable("source", message);
-    message.setContent(getFileContents("encoded-saml-assertion-1.txt"));
+    message.setContent(getFileContents(filename));
 
     Properties props = new Properties();
     props.setProperty("input", "source");
@@ -300,16 +300,12 @@ public class SamlDecoderTest {
 
     SamlDecoder callout = new SamlDecoder(props);
 
-    // execute and retrieve output
     ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);
     ExecutionResult expectedResult = ExecutionResult.SUCCESS;
-
-    // check result and output
     Assert.assertEquals(actualResult, expectedResult);
     Assert.assertNull(msgCtxt.getVariable("decoder_error"));
     String output = (String) msgCtxt.getVariable("output");
     Assert.assertNotNull(output);
-    //System.out.printf("%s\n", output);
 
     Document doc = docFromStream(new ByteArrayInputStream(output.getBytes(StandardCharsets.UTF_8)));
 
@@ -317,13 +313,32 @@ public class SamlDecoderTest {
     // saml "urn:oasis:names:tc:SAML:2.0:assertion"
     NodeList nl = doc.getElementsByTagNameNS("urn:oasis:names:tc:SAML:2.0:assertion", "Assertion");
     Assert.assertEquals(nl.getLength(), 1, "Assertion element");
-
   }
 
-  @Test
-  public void sample2() throws Exception {
+  @DataProvider(name = "uncompressedCases")
+  public static Object[][] getDataForUncompressedCases() throws IOException, IllegalStateException {
+    Function<String, Object[]> toObjArray = fname -> new Object[] { fname };
+
+      return Arrays.stream(new String[] {
+        "encoded-saml-assertion-1.txt",
+        "encoded-saml-assertion-4.txt",
+        }).map(toObjArray).toArray(Object[][]::new);
+  }
+
+  @DataProvider(name = "inflateCases")
+  public static Object[][] getDataForInflateCases() throws IOException, IllegalStateException {
+    Function<String, Object[]> toObjArray = fname -> new Object[] { fname };
+
+      return Arrays.stream(new String[] {
+        "encoded-saml-assertion-2.txt",
+        "encoded-saml-assertion-3.txt",
+        }).map(toObjArray).toArray(Object[][]::new);
+  }
+
+  @Test(dataProvider = "inflateCases")
+  public void inflateCases(String filename) throws Exception {
     msgCtxt.setVariable("source", message);
-    message.setContent(getFileContents("encoded-saml-assertion-2.txt"));
+    message.setContent(getFileContents(filename));
 
     Properties props = new Properties();
     props.setProperty("input", "source");
@@ -332,24 +347,19 @@ public class SamlDecoderTest {
 
     SamlDecoder callout = new SamlDecoder(props);
 
-    // execute and retrieve output
     ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);
     ExecutionResult expectedResult = ExecutionResult.SUCCESS;
-
-    // check result and output
-    Assert.assertEquals(actualResult, expectedResult);
-    Assert.assertNull(msgCtxt.getVariable("decoder_error"));
+    Assert.assertEquals(actualResult, expectedResult, filename);
+    Assert.assertNull(msgCtxt.getVariable("decoder_error"), filename);
     String output = (String) msgCtxt.getVariable("output");
-    Assert.assertNotNull(output);
-    // System.out.printf("%s\n", output);
+    Assert.assertNotNull(output, filename);
 
     Document doc = docFromStream(new ByteArrayInputStream(output.getBytes(StandardCharsets.UTF_8)));
 
     // samlp "urn:oasis:names:tc:SAML:2.0:protocol"
     // saml "urn:oasis:names:tc:SAML:2.0:assertion"
     NodeList nl = doc.getElementsByTagNameNS("urn:oasis:names:tc:SAML:2.0:assertion", "Assertion");
-    Assert.assertEquals(nl.getLength(), 1, "Assertion element");
-
+    Assert.assertEquals(nl.getLength(), 1, "Assertion element " + filename);
   }
 
 }
