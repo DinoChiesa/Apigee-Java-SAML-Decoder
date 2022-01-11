@@ -64,27 +64,89 @@ You do not need to build this callout in order to use it.  But if you wish to bu
 
 ## Usage Notes
 
-Include an XML file for the Java callout policy in your
-apiproxy/resources/policies directory. It should look like this:
+This callout can emit the XML string value into...:
+
+* a context variable of String type
+* a context variable of Message type
+
+The callout can create a context variable of String type. Unfortunately that
+callout _is not able to create a Message_ on its own.
+
+Keep in mind that if you want to use the ValidateSAMLAssertion policy, it
+requires a Message input.  Therefore one way or the other, you need to create a
+Message.
+
+You can do this with an AssignMessage policy. You can attach the policy into the
+flow either before or after the callout runs.
+
+
+### Option 1: Callout, then AssignMessage
+
+Configure your API proxy to execute the Java callout first. Configure it to emit the output to a String variable. And then follow it with AssignMessage which uses that String variable to populate the content of the payload. Those two policies would look like this:
 
 ```xml
- <JavaCallout name='Java-SamlDecode'>
-   <Properties>
-     <Property name='input'>variable-name-containing-encoded-saml-token</Property>
-     <Property name='output'>variable-name-to-receive-decoded-saml-token</Property>
-   </Properties>
-   <ClassName>com.google.apigee.callouts.SamlDecoder</ClassName>
-   <ResourceURL>java://apigee-java-callout-samldecoder-20220110.jar</ResourceURL>
- </JavaCallout>
+<JavaCallout name='Java-SamlDecode'>
+  <Properties>
+    <Property name='input'>inbound_encoded_saml_token</Property>
+    <!-- this will be a String that the policy creates -->
+    <Property name='output'>outbound_decoded_saml_assertion</Property>
+  </Properties>
+  <ClassName>com.google.apigee.callouts.SamlDecoder</ClassName>
+  <ResourceURL>java://apigee-java-callout-samldecoder-20220110.jar</ResourceURL>
+</JavaCallout>
+```
+```xml
+<AssignMessage name='AM-ContrivedMessage-1'>
+  <AssignTo createNew='true' transport='http' type='request'>contrivedMessage</AssignTo>
+  <Set>
+    <!-- fill the message content with the output of the prior policy -->
+    <Payload contentType='text/xml'>{outbound_decoded_saml_assertion}</Payload>
+    <Verb>POST</Verb>
+  </Set>
+</AssignMessage>
 ```
 
-The `input` variable can be a string or a message.  The callout will do the
+
+### Option 2: AssignMessage, then callout
+
+Attach the AssignMessage policy before the Java callout, and configure it to create an "empty" message variable:
+
+```xml
+<AssignMessage name='AM-ContrivedMessage-1'>
+  <!-- this specifies the name of a new context variable of Message type -->
+  <AssignTo createNew='true' transport='http' type='request'>contrivedMessage</AssignTo>
+  <Set>
+    <!-- this message content will be replaced later -->
+    <Payload contentType='text/xml'><![CDATA[<root/>]]></Payload>
+    <Verb>POST</Verb>
+  </Set>
+</AssignMessage>
+```
+
+And then follow that with the SAML Decode Java callout:
+
+```xml
+<JavaCallout name='Java-SamlDecode'>
+  <Properties>
+    <Property name='input'>name-of-variable-containing-encoded-saml-token</Property>
+    <!-- specify the message created by the prior AssignMessage -->
+    <Property name='output'>contrivedMessage</Property>
+  </Properties>
+  <ClassName>com.google.apigee.callouts.SamlDecoder</ClassName>
+  <ResourceURL>java://apigee-java-callout-samldecoder-20220110.jar</ResourceURL>
+</JavaCallout>
+```
+
+### Configuration of the Callout
+
+The `input` and `output` properties are required. 
+
+The `input` variable can be a string or a message. The callout will do the
 right thing for either.  The `output` variable can be the name of an existing
 message. In that case, the callout will set the content of the message to
-contain the decoded XML.  Otherwise, the callout will set the string value of
-the XML directly into the output variable.
+contain the decoded XML.  Otherwise, the callout will create a new context variable, or set the value of the existing context variable, to a String value of
+the decoded XML.
 
-These are both required.
 
 There are two optional properties:
 
@@ -95,25 +157,8 @@ There are two optional properties:
 
 Further notes:
 
-* If the encoded SAML assertion is contained within a request header, you can
-  use `request.header.HEADERNAME` as the value for the `input` property.
-
-* If you need a message to contain the output, you can contrive one with an
-  AssignMessage policy like this:
-
-  ```
-   <AssignMessage name='AM-ContrivedMessage-1'>
-     <AssignTo createNew='true' transport='http' type='request'>contrivedMessage</AssignTo>
-     <Set>
-       <!-- this message content will be replaced later -->
-       <Payload contentType='text/xml'><![CDATA[<root/>]]></Payload>
-       <Verb>POST</Verb>
-     </Set>
-   </AssignMessage>
-  ```
-
-  Execute that just prior to the Java callout, and use `contrivedMessage` as the
-  value for the `output` property in the callout configuration.
+* If the encoded SAML assertion is contained within the normala request query parameter, you can
+  use `request.queryparam.SAMLResponse` as the value for the `input` property.
 
 ## Bugs
 
