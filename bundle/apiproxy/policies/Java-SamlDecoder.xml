@@ -4,5 +4,5 @@
     <Property name='output'>decoded_response</Property>
   </Properties>
   <ClassName>com.google.apigee.callouts.SamlDecoder</ClassName>
-  <ResourceURL>java://apigee-java-callout-samldecoder-20220105.jar</ResourceURL>
+  <ResourceURL>java://apigee-java-callout-samldecoder-20220110.jar</ResourceURL>
 </JavaCallout>

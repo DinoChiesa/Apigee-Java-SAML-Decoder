@@ -232,7 +232,7 @@ public class SamlDecoderTest {
           @Mock()
           public String getQueryParam(final String name) {
             List<String> paramList = getQueryParams(name);
-            return (paramList!=null) ? paramList.get(0) : null;
+            return (paramList != null) ? paramList.get(0) : null;
           }
 
           @Mock()
@@ -287,63 +287,9 @@ public class SamlDecoderTest {
     return new String(Files.readAllBytes(path));
   }
 
-
-  @Test(dataProvider = "uncompressedCases")
-  public void uncompressedCases(String filename) throws Exception {
+  public void runOneCase(Properties props, String filename) throws Exception {
     msgCtxt.setVariable("source", message);
     message.setContent(getFileContents(filename));
-
-    Properties props = new Properties();
-    props.setProperty("input", "source");
-    props.setProperty("output", "output");
-    props.setProperty("inflate", "false");
-
-    SamlDecoder callout = new SamlDecoder(props);
-
-    ExecutionResult actualResult = callout.execute(msgCtxt, exeCtxt);
-    ExecutionResult expectedResult = ExecutionResult.SUCCESS;
-    Assert.assertEquals(actualResult, expectedResult);
-    Assert.assertNull(msgCtxt.getVariable("decoder_error"));
-    String output = (String) msgCtxt.getVariable("output");
-    Assert.assertNotNull(output);
-
-    Document doc = docFromStream(new ByteArrayInputStream(output.getBytes(StandardCharsets.UTF_8)));
-
-    // samlp "urn:oasis:names:tc:SAML:2.0:protocol"
-    // saml "urn:oasis:names:tc:SAML:2.0:assertion"
-    NodeList nl = doc.getElementsByTagNameNS("urn:oasis:names:tc:SAML:2.0:assertion", "Assertion");
-    Assert.assertEquals(nl.getLength(), 1, "Assertion element");
-  }
-
-  @DataProvider(name = "uncompressedCases")
-  public static Object[][] getDataForUncompressedCases() throws IOException, IllegalStateException {
-    Function<String, Object[]> toObjArray = fname -> new Object[] { fname };
-
-      return Arrays.stream(new String[] {
-        "encoded-saml-assertion-1.txt",
-        "encoded-saml-assertion-4.txt",
-        }).map(toObjArray).toArray(Object[][]::new);
-  }
-
-  @DataProvider(name = "inflateCases")
-  public static Object[][] getDataForInflateCases() throws IOException, IllegalStateException {
-    Function<String, Object[]> toObjArray = fname -> new Object[] { fname };
-
-      return Arrays.stream(new String[] {
-        "encoded-saml-assertion-2.txt",
-        "encoded-saml-assertion-3.txt",
-        }).map(toObjArray).toArray(Object[][]::new);
-  }
-
-  @Test(dataProvider = "inflateCases")
-  public void inflateCases(String filename) throws Exception {
-    msgCtxt.setVariable("source", message);
-    message.setContent(getFileContents(filename));
-
-    Properties props = new Properties();
-    props.setProperty("input", "source");
-    props.setProperty("output", "output");
-    //props.setProperty("inflate", "false");
 
     SamlDecoder callout = new SamlDecoder(props);
 
@@ -362,4 +308,65 @@ public class SamlDecoderTest {
     Assert.assertEquals(nl.getLength(), 1, "Assertion element " + filename);
   }
 
+  static Function<String, Object[]> toObjArray = fname -> new Object[] {fname};
+
+  static Object[][] to2Darray(String[] a) {
+    return Arrays.stream(a).map(toObjArray).toArray(Object[][]::new);
+  }
+
+  @DataProvider(name = "uncompressedCases")
+  public static Object[][] getDataForUncompressedCases() throws IOException, IllegalStateException {
+
+    return to2Darray(
+        new String[] {
+          "encoded-saml-assertion-1.txt", "encoded-saml-assertion-4.txt",
+        });
+  }
+
+  @DataProvider(name = "inflateCases")
+  public static Object[][] getDataForInflateCases() throws IOException, IllegalStateException {
+    return to2Darray(
+        new String[] {
+          "encoded-saml-assertion-2.txt", "encoded-saml-assertion-3.txt",
+        });
+  }
+
+  @DataProvider(name = "urlEncodedCases")
+  public static Object[][] getDataForUrlEncodedCases() throws IOException, IllegalStateException {
+    return to2Darray(
+        new String[] {
+          "encoded-saml-assertion-urlencoded-1.txt",
+        });
+  }
+
+  @Test(dataProvider = "uncompressedCases")
+  public void uncompressedCases(String filename) throws Exception {
+    Properties props = new Properties();
+    props.setProperty("input", "source");
+    props.setProperty("output", "output");
+    props.setProperty("inflate", "false");
+
+    runOneCase(props, filename);
+  }
+
+  @Test(dataProvider = "inflateCases")
+  public void inflateCases(String filename) throws Exception {
+    Properties props = new Properties();
+    props.setProperty("input", "source");
+    props.setProperty("output", "output");
+    // props.setProperty("inflate", "false");
+
+    runOneCase(props, filename);
+  }
+
+  @Test(dataProvider = "urlEncodedCases")
+  public void urlEncodedCases(String filename) throws Exception {
+    Properties props = new Properties();
+    props.setProperty("input", "source");
+    props.setProperty("output", "output");
+    props.setProperty("inflate", "false");
+    props.setProperty("url-decode", "true");
+
+    runOneCase(props, filename);
+  }
 }

@@ -24,6 +24,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -58,6 +59,10 @@ public class SamlDecoder implements Execution {
 
   private boolean getInflate(MessageContext msgCtxt) throws Exception {
     return _getBooleanProperty(msgCtxt, "inflate", true);
+  }
+
+  private boolean getUrlDecode(MessageContext msgCtxt) throws Exception {
+    return _getBooleanProperty(msgCtxt, "url-decode", false);
   }
 
   protected boolean _getBooleanProperty(
@@ -138,6 +143,10 @@ public class SamlDecoder implements Execution {
 
       String encodedString =
           (input instanceof Message) ? ((Message) input).getContent() : (String) input;
+
+      if (getUrlDecode(msgCtxt)) {
+        encodedString = java.net.URLDecoder.decode(encodedString, StandardCharsets.UTF_8.name());
+      }
 
       encodedString = encodedString.trim().replaceAll("\\r\\n|\\r|\\n", "");
       // base64-Decode the String into bytes
