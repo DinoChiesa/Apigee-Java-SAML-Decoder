@@ -82,7 +82,7 @@ flow either before or after the callout runs.
 
 ### Option 1: Callout, then AssignMessage
 
-Configure your API proxy to execute the Java callout first. Configure it to emit the output to a String variable. And then follow it with AssignMessage which uses that String variable to populate the content of the payload. Those two policies would look like this:
+Configure your API proxy to execute the Java callout first. Configure it to emit the output to a String variable. Like this:
 
 ```xml
 <JavaCallout name='Java-SamlDecode'>
@@ -95,6 +95,8 @@ Configure your API proxy to execute the Java callout first. Configure it to emit
   <ResourceURL>java://apigee-java-callout-samldecoder-20220110.jar</ResourceURL>
 </JavaCallout>
 ```
+
+And then follow it with AssignMessage which uses that String variable to populate the content of the payload. Like this:
 ```xml
 <AssignMessage name='AM-ContrivedMessage-1'>
   <AssignTo createNew='true' transport='http' type='request'>contrivedMessage</AssignTo>
@@ -139,7 +141,7 @@ And then follow that with the SAML Decode Java callout:
 
 ### Configuration of the Callout
 
-The `input` and `output` properties are required. 
+The `input` and `output` properties are required.
 
 The `input` variable can be a string or a message. The callout will do the
 right thing for either.  The `output` variable can be the name of an existing
@@ -150,10 +152,34 @@ the decoded XML.
 
 There are two optional properties:
 
-| name     | description        |
-| -------- | ------------------ |
-| inflate  | tells the callout whether to try to Inflate the decoded bytestream. Default: `true`. Set this property explicitly to `false` to turn this behavior off. |
+| name       | description        |
+| ---------- | ------------------ |
+| inflate    | tells the callout whether to try to Inflate the decoded bytestream. Default: `true`. Set this property explicitly to `false` to turn this behavior off. |
 | url-decode | tells the callout whether to try to url-decode the string, before base64-decoding. Default: `false`  |
+
+
+For example, if the inbound SAML assertion is encoded but not deflated, and you use the default inflate behavior, yu will see these context variables in output:
+
+| name                | description              |
+| ------------------- | ------------------------ |
+| decoder\_error      | invalid code lengths set |
+| decoder\_stacktrace | java.util.zip.DataFormatException: invalid code lengths set at java.util.zip.Inflater.inflateBytes(Native Method) at ... |
+
+To avoid that and to allow the decoder to succeed, configure the policy like this:
+```xml
+<JavaCallout name='Java-SamlDecode-No-Inflate'>
+  <Properties>
+    <Property name='input'>name-of-variable-containing-encoded-saml-token</Property>
+    <Property name='inflate'>false</Property>
+    <!-- specify the message created by a prior AssignMessage -->
+    <Property name='output'>contrivedMessage</Property>
+  </Properties>
+  <ClassName>com.google.apigee.callouts.SamlDecoder</ClassName>
+  <ResourceURL>java://apigee-java-callout-samldecoder-20220110.jar</ResourceURL>
+</JavaCallout>
+```
+
+
 
 Further notes:
 
