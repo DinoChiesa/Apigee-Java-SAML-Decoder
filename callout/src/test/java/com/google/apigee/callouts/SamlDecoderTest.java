@@ -319,7 +319,7 @@ public class SamlDecoderTest {
 
     return to2Darray(
         new String[] {
-          "encoded-saml-assertion-1.txt", "encoded-saml-assertion-4.txt",
+          "encoded-saml-assertion-uncompressed-1.txt", "encoded-saml-assertion-uncompressed-2.txt",
         });
   }
 
@@ -327,7 +327,7 @@ public class SamlDecoderTest {
   public static Object[][] getDataForInflateCases() throws IOException, IllegalStateException {
     return to2Darray(
         new String[] {
-          "encoded-saml-assertion-2.txt", "encoded-saml-assertion-3.txt",
+          "encoded-saml-assertion-compressed-1.txt", "encoded-saml-assertion-compressed-2.txt",
         });
   }
 
@@ -335,7 +335,7 @@ public class SamlDecoderTest {
   public static Object[][] getDataForUrlEncodedCases() throws IOException, IllegalStateException {
     return to2Darray(
         new String[] {
-          "encoded-saml-assertion-urlencoded-1.txt",
+          "encoded-saml-assertion-uncompressed-urlencoded-1.txt",
         });
   }
 
