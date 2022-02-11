@@ -4,29 +4,33 @@ This directory contains the Java source code and pom.xml file required to
 compile a simple Java callout for Apigee. The callout is very simple: it
 decodes an encoded SAML Assertion.
 
-## Why do we need this?
+This policy does not Validate the signature on the decoded assertion. For that you can use the builtin policy, ValidateSAMLAssertion. 
+
+## Why is this callout necessary?
 
 The Apigee builtin policy
 [ValidateSAMLAssertion](https://cloud.google.com/apigee/docs/api-platform/reference/policies/saml-assertion-policy#usagenotes-validatesamlassertion)
-will verify the SAML signature based on certs in the TrustStore.
+will verify the SAML signature based on certificates that you have configured in the Apigee TrustStore.
 
 [ExtractVariables](https://cloud.google.com/apigee/docs/api-platform/reference/policies/extract-variables-policy)
 can allow you to extract from that XML document any attributes of interest, like the user attribute,
 into context variables which you can then reference in subsequent policies.
 
 The only obstacle is that `ValidateSAMLAssertion` requires the SAML to be
-presented in an XML form. If you have a base64-encoded, compressed version of a SAML
-assertion, `ValidateSAMLAssertion` will not be able to handle it.
+presented in a non-encoded XML form. If you have a base64-encoded, compressed
+version of a SAML assertion, `ValidateSAMLAssertion` will not be able to handle
+it.
 
-The encoded assertion is produced by a multi-step process like
-this:
+But some systems produce SAML assertions in encoded form. The encoded assertion
+is produced by a multi-step process like this:
 
 1. generate the XML form of the signed SAML assertion
 2. (optionally) compress the XML text into a bytestream
 3. base64-encode that bytestream into a String
 4. url-encode that resulting String
 
-Often this SAML Assertion is encoded for use as a header or queryparam in an HTTP request. It's often named `SAMLResponse`.
+Often this SAML Assertion is encoded for use as a header or form parameter in an
+HTTP request. It's often named `SAMLResponse`.
 
 This callout provides a way to reverse steps 4, 3, and 2 of that process, to produce
 an XML version of the assertion that `ValidateSAMLAssertion` can handle.
@@ -42,7 +46,8 @@ This example is not an official Google product, nor is it part of an official Go
 
 ## Building
 
-You do not need to build this callout in order to use it.  But if you wish to build it, you can do so.
+You do not need to build this callout in order to use it.  But if you wish to
+build it, you can do so.
 
 1. unpack (if you can read this, you've already done that).
 
@@ -64,25 +69,28 @@ You do not need to build this callout in order to use it.  But if you wish to bu
 
 ## Usage Notes
 
-This callout can emit the XML string value into...:
+If you want to decode and then validate a SAML Assertion, you will need to first
+use this callout, and then use the ValidateSAMLAssertion policy. But, you will
+also need an AssignMessage, as a complement to the callout. Here's why:
 
-* a context variable of String type
-* a context variable of Message type
+The ValidateSAMLAssertion policy requires an input of type `Message`.  This
+callout can emit the XML string value into either,
 
-The callout can create a context variable of String type. Unfortunately that
-callout _is not able to create a Message_ on its own.
+* a context variable of `String` type
+* a context variable of `Message` type
 
-Keep in mind that if you want to use the ValidateSAMLAssertion policy, it
-requires a Message input.  Therefore one way or the other, you need to create a
-Message.
+The callout can create a context variable of String type. Unfortunately the
+callout _is not able to create a variable of type `Message`_ on its own.
 
-You can do this with an AssignMessage policy. You can attach the policy into the
+Therefore one way or the other, you need to create a `Message`, which you can do
+with an AssignMessage policy. You can attach the AssignMessage policy into the
 flow either before or after the callout runs.
 
 
 ### Option 1: Callout, then AssignMessage
 
-Configure your API proxy to execute the Java callout first. Configure it to emit the output to a String variable. Like this:
+Configure your API proxy to execute the Java callout first. Configure it to emit
+the output to a String variable. Like this:
 
 ```xml
 <JavaCallout name='Java-SamlDecode'>
@@ -96,7 +104,9 @@ Configure your API proxy to execute the Java callout first. Configure it to emit
 </JavaCallout>
 ```
 
-And then follow it with AssignMessage which uses that String variable to populate the content of the payload. Like this:
+And then follow it with AssignMessage which uses that String variable to
+populate the content of the payload. Like this:
+
 ```xml
 <AssignMessage name='AM-ContrivedMessage-1'>
   <AssignTo createNew='true' transport='http' type='request'>contrivedMessage</AssignTo>
@@ -111,7 +121,8 @@ And then follow it with AssignMessage which uses that String variable to populat
 
 ### Option 2: AssignMessage, then callout
 
-Attach the AssignMessage policy before the Java callout, and configure it to create an "empty" message variable:
+Attach the AssignMessage policy before the Java callout, and configure it to
+create an "empty" message variable:
 
 ```xml
 <AssignMessage name='AM-ContrivedMessage-1'>
@@ -143,11 +154,12 @@ And then follow that with the SAML Decode Java callout:
 
 The `input` and `output` properties are required.
 
-The `input` variable can be a string or a message. The callout will do the
-right thing for either.  The `output` variable can be the name of an existing
+The `input` variable can be a string or a message. The callout will do the right
+thing for either. The `output` variable can be the name of an existing
 message. In that case, the callout will set the content of the message to
-contain the decoded XML.  Otherwise, the callout will create a new context variable, or set the value of the existing context variable, to a String value of
-the decoded XML.
+contain the decoded XML. Otherwise, the callout will create a new context
+variable, or set the value of the existing context variable, to a String value
+of the decoded XML.
 
 
 There are two optional properties:
@@ -178,6 +190,7 @@ To avoid that and to allow the decoder to succeed, configure the policy like thi
   <ResourceURL>java://apigee-java-callout-samldecoder-20220110.jar</ResourceURL>
 </JavaCallout>
 ```
+
 
 
 
