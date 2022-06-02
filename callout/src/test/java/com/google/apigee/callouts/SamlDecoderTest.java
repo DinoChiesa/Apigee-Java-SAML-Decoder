@@ -319,7 +319,9 @@ public class SamlDecoderTest {
 
     return to2Darray(
         new String[] {
-          "encoded-saml-assertion-uncompressed-1.txt", "encoded-saml-assertion-uncompressed-2.txt",
+          "encoded-saml-assertion-uncompressed-1.txt",
+          "encoded-saml-assertion-uncompressed-2.txt",
+          "encoded-saml-assertion-uncompressed-3.txt",
         });
   }
 
