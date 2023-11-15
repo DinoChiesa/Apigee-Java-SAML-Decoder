@@ -2,9 +2,9 @@
 
 This directory contains the Java source code and pom.xml file required to
 compile a simple Java callout for Apigee. The callout is very simple: it
-decodes an encoded SAML Assertion.
+decodes an encoded SAML Request or Response. Encoded SAML messages are used with HTTP Redirect bindings, and HTTP POST bindings, as defined in [SAML Bindings 2.0](https://docs.oasis-open.org/security/saml/v2.0/saml-bindings-2.0-os.pdf), see sections 3.4 and 3.5.
 
-This policy does not Validate the signature on the decoded assertion. For that you can use the builtin policy, ValidateSAMLAssertion. 
+This policy does not Validate the signature on the decoded SAML message or assertion. For that you can use the builtin Apigee policy, ValidateSAMLAssertion.
 
 ## Why is this callout necessary?
 
@@ -21,19 +21,21 @@ presented in a non-encoded XML form. If you have a base64-encoded, compressed
 version of a SAML assertion, `ValidateSAMLAssertion` will not be able to handle
 it.
 
-But some systems produce SAML assertions in encoded form. The encoded assertion
-is produced by a multi-step process like this:
+But some systems produce SAML assertions in encoded form. Actually compressed-then-encoded.
+The encoded assertion is produced by a multi-step process like this:
 
 1. generate the XML form of the signed SAML assertion
-2. (optionally) compress the XML text into a bytestream
+2. (optionally) compress (via [DEFLATE](https://datatracker.ietf.org/doc/html/rfc1951)) the XML text into a bytestream
 3. base64-encode that bytestream into a String
 4. url-encode that resulting String
 
-Often this SAML Assertion is encoded for use as a header or form parameter in an
-HTTP request. It's often named `SAMLResponse`.
+Often this SAML Assertion is encoded for use as a header, form parameter, or query parameter in an
+HTTP message. The parameter is often named `SAMLResponse` if it's a response, and `SAMLRequest` if it's a request.
 
-This callout provides a way to reverse steps 4, 3, and 2 of that process, to produce
+This callout provides a way to reverse steps 4, 3, and (optionally) 2 of the encoding process, to produce
 an XML version of the assertion that `ValidateSAMLAssertion` can handle.
+
+
 
 ## LICENSE
 
